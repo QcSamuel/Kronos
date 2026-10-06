@@ -76,6 +76,13 @@ jobs:
       run: |
         cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DYAB_IS_WIP=ON "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 
+    # The runner image no longer ships NSIS, which CPack needs to make the .exe installer.
+    - name: Install NSIS
+      shell: pwsh
+      run: |
+        choco install nsis -y --no-progress
+        "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
     - name: Build
       run: |
         echo "Compiling"
