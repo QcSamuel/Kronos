@@ -16,14 +16,43 @@ env:
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
+
+    # Upstream commit 1d32cadb changed vidcs.c to use struct fields that were never added
+    # to the headers. This adds them (idempotent). Remove this step once upstream fixes it.
+    - name: Patch missing struct fields
+      shell: python {0}
+      run: |
+        import os, re, sys, pathlib
+        root = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+
+        def patch(rel, pattern, repl, marker):
+            p = root / rel
+            s = p.read_bytes().decode('utf-8', errors='surrogateescape')
+            if marker in s:
+                print('already patched:', rel)
+                return
+            new, n = re.subn(pattern, repl, s, count=1, flags=re.S)
+            if n != 1:
+                sys.exit('PATTERN NOT FOUND in ' + rel)
+            p.write_bytes(new.encode('utf-8', errors='surrogateescape'))
+            print('patched:', rel)
+
+        patch('yabause/src/sys/vdp1/include/vdp1.h',
+              r'(u16 userclipY2;)(\r?\n)',
+              r'\1\2   u16 userclipMode;\2', 'userclipMode')
+
+        patch('yabause/src/core/video/opengl/common/include/vidshared.h',
+              r'(u8 alpha_per_line\[270\];)(\r?\n)',
+              r'\1\2   u32 bitmap_base;\2   u32 bitmap_wrap_size;\2', 'bitmap_wrap_size')
+
+        patch('yabause/src/core/video/opengl/common/include/ygl.h',
+              r'(int colorRamIndexFull\[512\];)(\r?\n)',
+              r'\1\2   int sprite_rgb_priority_per_line[1024];\2   u8 msb_shadow_enabled_per_line[1024];\2',
+              'sprite_rgb_priority_per_line')
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
@@ -41,8 +70,6 @@ jobs:
           mv SDL2-2.30.8 ${{github.workspace}}/SDL2
           rm SDL2.zip
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       env:
         sdl2lib_DIR: ${{github.workspace}}\SDL2
         sdl2_DIR: ${{github.workspace}}\SDL2\cmake
@@ -50,16 +77,10 @@ jobs:
         cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DYAB_IS_WIP=ON "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 
     - name: Build
-      # Build your program with the given configuration
       run: |
         echo "Compiling"
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
 
-    #- name: Test
-      #working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      #run: ctest -C ${{env.BUILD_TYPE}}
     - name: Prepare package
       id: rename
       shell: bash
