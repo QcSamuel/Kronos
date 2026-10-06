@@ -10,6 +10,9 @@ on:
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
+  # CMake 4.x removed compatibility with cmake_minimum_required < 3.5.
+  # Set as an env var so nested ExternalProject configures (e.g. m68kmake) inherit it.
+  CMAKE_POLICY_VERSION_MINIMUM: "3.5"
 
 jobs:
   build:
@@ -71,4 +74,3 @@ jobs:
       with:
         name: ${{env.ArtifactName}}
         path: ${{env.ReleaseFile}}
-
