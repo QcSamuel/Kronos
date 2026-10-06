@@ -44,7 +44,7 @@ jobs:
         sdl2lib_DIR: ${{github.workspace}}\SDL2
         sdl2_DIR: ${{github.workspace}}\SDL2\cmake
       run: |
-        cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DYAB_IS_WIP=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        cmake -S ${{github.workspace}}/yabause -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DYAB_IS_WIP=ON "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 
     - name: Build
       # Build your program with the given configuration
